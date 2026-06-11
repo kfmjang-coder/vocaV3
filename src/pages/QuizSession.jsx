@@ -77,7 +77,15 @@ export default function QuizSession() {
 
   const settle = async (correct, pickedLabel = null, skipped = false) => {
     haptic(correct ? 25 : skipped ? 15 : [40, 60, 40]);
-    setFeedback({ correct, picked: pickedLabel, skipped });
+    // 암기 단계 계산 (recordAnswer와 동일 로직): 정답 시 +1, 2단계부터 '외운 단어'
+    const prevStage = q.word.reviewStage || 0;
+    const newStage = correct ? Math.min(prevStage + 1, 4) : 0;
+    setFeedback({
+      correct, picked: pickedLabel, skipped,
+      newStage,
+      becameMemorized: correct && newStage === 2 && prevStage < 2,
+      wasMemorized: prevStage >= 2
+    });
     if (correct) setScore((s) => s + 1);
     else wrongRef.current.push(q.word);
     // 정답 공개와 함께 발음 한 번 더 (영→한은 이미 들었으므로 제외)
@@ -355,6 +363,43 @@ export default function QuizSession() {
                     style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', padding: 0, marginTop: 2 }}
                     aria-label="예문 듣기">🔊</button>
                 </motion.div>
+              )}
+
+              {/* 암기 단계: 점이 차오르는 걸 보면 규칙을 글 없이 체득 */}
+              {feedback.correct ? (
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}
+                  className="row" style={{ marginTop: 10, gap: 5, flexWrap: 'wrap' }}>
+                  <div className="row" style={{ gap: 4 }}>
+                    {[1, 2, 3, 4].map((s) => (
+                      <motion.div
+                        key={s}
+                        initial={s === feedback.newStage ? { scale: 0 } : false}
+                        animate={{ scale: 1 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 15, delay: 0.35 }}
+                        style={{
+                          width: 10, height: 10, borderRadius: '50%',
+                          background: s <= feedback.newStage ? 'var(--green)' : 'transparent',
+                          border: `2px solid ${s <= feedback.newStage ? 'var(--green)' : 'var(--green-dark)'}`,
+                          opacity: s <= feedback.newStage ? 1 : 0.35
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--green-dark)' }}>
+                    {feedback.newStage === 1
+                      ? '🌱 한 번 더 맞히면 "외운 단어"가 돼요!'
+                      : feedback.becameMemorized
+                        ? '✨ 외운 단어 달성! 3일 뒤 다시 확인해요'
+                        : `🧠 외운 단어 유지! ${[1, 3, 7, 14][feedback.newStage - 1]}일 뒤 다시 확인해요`}
+                  </span>
+                </motion.div>
+              ) : (
+                <div style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700, color: 'var(--red-dark)', opacity: 0.85 }}>
+                  {feedback.wasMemorized
+                    ? '📉 외운 단어에서 빠졌어요 · 암기 단계가 처음부터 다시 시작돼요'
+                    : '📝 오답노트에 담았어요 · 다음 퀴즈에 또 나와요'}
+                </div>
               )}
               <button className={`btn ${feedback.correct ? 'btn-green' : 'btn-red'}`} style={{ marginTop: 14 }} onClick={next}>
                 {idx + 1 < total ? '다음 문제' : '결과 보기'}

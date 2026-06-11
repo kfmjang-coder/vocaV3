@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { getAllWords, getProfile } from '../services/words';
 import { toggleTheme, isDark } from '../hooks/useTheme';
@@ -23,6 +23,7 @@ export default function Profile() {
   const nav = useNavigate();
   const [stats, setStats] = useState(null);
   const [dark, setDark] = useState(isDark());
+  const [showInfo, setShowInfo] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -66,15 +67,68 @@ export default function Profile() {
       <div className="row" style={{ marginBottom: 20 }}>
         {[
           { n: stats.total, l: '전체 단어', c: 'var(--blue)' },
-          { n: stats.memorized, l: '외운 단어', c: 'var(--green)' },
+          { n: stats.memorized, l: '외운 단어 ⓘ', c: 'var(--green)', info: true },
           { n: stats.quizzes, l: '퀴즈 횟수', c: 'var(--purple)' }
         ].map((s) => (
-          <div key={s.l} className="card center" style={{ flex: 1, padding: 12 }}>
+          <div
+            key={s.l}
+            className={`card center ${s.info ? 'card-press' : ''}`}
+            style={{ flex: 1, padding: 12 }}
+            onClick={s.info ? () => { haptic(10); setShowInfo(true); } : undefined}
+          >
             <strong style={{ fontSize: 22, color: s.c }}>{s.n}</strong>
             <span style={{ fontSize: 11, color: 'var(--gray)', fontWeight: 700 }}>{s.l}</span>
           </div>
         ))}
       </div>
+
+      {/* 외운 단어 기준 안내 시트 */}
+      <AnimatePresence>
+        {showInfo && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowInfo(false)}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 90 }}
+            />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+              style={{
+                position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 91,
+                background: 'var(--bg)', borderRadius: '20px 20px 0 0',
+                padding: '24px 20px calc(24px + var(--safe-b))',
+                maxWidth: 480, margin: '0 auto'
+              }}>
+              <div style={{ width: 40, height: 4, borderRadius: 999, background: 'var(--line)', margin: '0 auto 16px' }} />
+              <h2 style={{ marginBottom: 14 }}>"외운 단어"는 이렇게 돼요 ✅</h2>
+
+              {[
+                { e: '🌱', t: '퀴즈에서 정답 1번', d: '싹이 텄어요. 한 번 더!' },
+                { e: '✨', t: '정답 2번 → 외운 단어!', d: '여기서 숫자가 +1 올라가요' },
+                { e: '📅', t: '3일 → 7일 → 14일 뒤 재확인', d: '잊어버릴 때쯤 퀴즈에 다시 나와요' },
+                { e: '📉', t: '틀리면 처음부터', d: '외운 단어에서 빠지고 다시 도전!' }
+              ].map((s, i) => (
+                <div key={i} className="row" style={{ marginBottom: 12, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 24 }}>{s.e}</span>
+                  <div>
+                    <strong style={{ fontSize: 15 }}>{s.t}</strong>
+                    <div style={{ fontSize: 13, color: 'var(--gray)' }}>{s.d}</div>
+                  </div>
+                </div>
+              ))}
+
+              <div className="card" style={{ background: 'var(--tint-yellow)', borderColor: 'var(--yellow)', padding: 12, fontSize: 13, fontWeight: 700, marginTop: 4 }}>
+                💡 꿀팁: 이미 아는 쉬운 단어는 단어장에서 카드를 오른쪽으로 밀면(→) 바로 외움 처리돼요
+              </div>
+
+              <button className="btn btn-green" style={{ marginTop: 16 }} onClick={() => setShowInfo(false)}>
+                알겠어요!
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <h2>내 뱃지 🏅</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
