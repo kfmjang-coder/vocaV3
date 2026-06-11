@@ -61,14 +61,21 @@ export default function QuizSession() {
 
   const total = questions.length;
 
-  const settle = async (correct, pickedLabel = null) => {
-    haptic(correct ? 25 : [40, 60, 40]);
-    setFeedback({ correct, picked: pickedLabel });
+  const settle = async (correct, pickedLabel = null, skipped = false) => {
+    haptic(correct ? 25 : skipped ? 15 : [40, 60, 40]);
+    setFeedback({ correct, picked: pickedLabel, skipped });
     if (correct) setScore((s) => s + 1);
     else wrongRef.current.push(q.word);
     // 정답 공개와 함께 발음 한 번 더 (영→한은 이미 들었으므로 제외)
     if (q.mode !== 'e2k') setTimeout(() => speak(q.word.english), 350);
     recordAnswer(user.uid, q.word, correct).catch(() => {});
+  };
+
+  /** 스킵: 오답 처리 → 오답노트 누적 + 다음 세션 출제 가중치 상승 */
+  const skip = () => {
+    if (feedback) return;
+    rec.stop();
+    settle(false, null, true);
   };
 
   const next = async () => {
@@ -176,6 +183,11 @@ export default function QuizSession() {
                 style={{ fontSize: 20, textAlign: 'center', marginBottom: 16 }}
               />
               {!feedback && <button className="btn btn-green" disabled={!typed.trim()} onClick={submitSpell}>확인</button>}
+              {!feedback && (
+                <button className="btn btn-ghost" style={{ marginTop: 4 }} onClick={skip}>
+                  🤷 모르겠어요
+                </button>
+              )}
             </>
           )}
           {q.mode === 'listen' && (
@@ -234,6 +246,12 @@ export default function QuizSession() {
                   {!feedback && <button className="btn btn-green" disabled={!typed.trim()} onClick={() => submitListen(typed)}>확인</button>}
                 </>
               )}
+              {/* 스킵: 정답 버튼과 경쟁하지 않는 고스트 스타일 */}
+              {!feedback && !judging && (
+                <button className="btn btn-ghost" style={{ marginTop: 6 }} onClick={skip}>
+                  🤷 모르겠어요
+                </button>
+              )}
             </>
           )}
 
@@ -269,7 +287,7 @@ export default function QuizSession() {
             }}>
             <div style={{ maxWidth: 480, margin: '0 auto' }}>
               <strong style={{ fontSize: 20, color: feedback.correct ? 'var(--green-dark)' : 'var(--red-dark)' }}>
-                {feedback.correct ? '정답이에요! 🎉' : '아쉬워요 😢'}
+                {feedback.correct ? '정답이에요! 🎉' : feedback.skipped ? '괜찮아요, 다음에 맞히면 돼요! 💪' : '아쉬워요 😢'}
               </strong>
               <div className="row" style={{ marginTop: 8, gap: 8, flexWrap: 'wrap' }}>
                 <strong style={{ fontSize: 18, color: feedback.correct ? 'var(--green-dark)' : 'var(--red-dark)' }}>
