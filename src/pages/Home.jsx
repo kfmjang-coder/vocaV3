@@ -11,7 +11,8 @@ import { Page } from '../components/ui';
 export default function Home() {
   const { user, gemini } = useAuth();
   const nav = useNavigate();
-  const fileRef = useRef(null);
+  const fileRef = useRef(null);      // 카메라 촬영
+  const galleryRef = useRef(null);   // 앨범에서 불러오기
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState('');
   const [stats, setStats] = useState(null);
@@ -101,6 +102,17 @@ export default function Home() {
         )}
       </motion.button>
       <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={onPick} />
+      <input ref={galleryRef} type="file" accept="image/*" hidden onChange={onPick} />
+
+      {/* 앨범에서 불러오기 */}
+      <button
+        className="btn btn-white"
+        style={{ marginBottom: 16 }}
+        disabled={analyzing}
+        onClick={() => { haptic(10); galleryRef.current?.click(); }}
+      >
+        🖼️ 앨범에서 사진 불러오기
+      </button>
 
       {error && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
