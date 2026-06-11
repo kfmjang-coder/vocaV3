@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import { getAllWords, recordAnswer, getProfile, updateStreak } from '../services/words';
+import { getAllWords, recordAnswer, getProfile, updateStreak, updateWord } from '../services/words';
 import { buildSession, matchKorean, matchEnglish } from '../services/quiz';
-import { judgeMeaning } from '../services/gemini';
+import { judgeMeaning, fetchPhonetics } from '../services/gemini';
 import { speak, useRecognition, haptic } from '../hooks/useSpeech';
 
 export default function QuizSession() {
@@ -24,15 +24,33 @@ export default function QuizSession() {
     if (!state?.poolIds) return;
     getAllWords(user.uid).then((all) => {
       const pool = all.filter((w) => state.poolIds.includes(w.id));
-      setQuestions(buildSession(pool, all, state.mode));
+      const session = buildSession(pool, all, state.mode);
+      setQuestions(session);
+
+      // 발음기호 없는 기존 단어 자동 보충 (한 번에 일괄 조회 → DB 저장)
+      const missing = [...new Set(session.filter((q) => !q.word.phonetic).map((q) => q.word.english))];
+      if (missing.length && navigator.onLine && gemini?.apiKey) {
+        fetchPhonetics(gemini, missing).then((map) => {
+          if (!Object.keys(map).length) return;
+          setQuestions((prev) =>
+            prev.map((q) =>
+              map[q.word.english] ? { ...q, word: { ...q.word, phonetic: map[q.word.english] } } : q
+            )
+          );
+          // 다음부터는 호출 없이 표시되도록 저장 (오프라인 대비)
+          session.forEach((q) => {
+            if (map[q.word.english]) updateWord(user.uid, q.word.id, { phonetic: map[q.word.english] }).catch(() => {});
+          });
+        });
+      }
     });
   }, []);
 
   const q = questions?.[idx];
 
-  // 듣고말하기: 문제 등장 시 자동 발음
+  // 자동 발음: 영→한 모드와 듣고말하기 모드는 문제 등장 시 발음 재생
   useEffect(() => {
-    if (q?.mode === 'listen' && !feedback) {
+    if ((q?.mode === 'listen' || q?.mode === 'e2k') && !feedback) {
       const t = setTimeout(() => speak(q.word.english), 400);
       return () => clearTimeout(t);
     }
@@ -48,6 +66,8 @@ export default function QuizSession() {
     setFeedback({ correct, picked: pickedLabel });
     if (correct) setScore((s) => s + 1);
     else wrongRef.current.push(q.word);
+    // 정답 공개와 함께 발음 한 번 더 (영→한은 이미 들었으므로 제외)
+    if (q.mode !== 'e2k') setTimeout(() => speak(q.word.english), 350);
     recordAnswer(user.uid, q.word, correct).catch(() => {});
   };
 
@@ -122,10 +142,18 @@ export default function QuizSession() {
           {q.mode === 'e2k' && (
             <>
               <p className="sub">알맞은 뜻을 골라요</p>
-              <div className="row" style={{ marginBottom: 28 }}>
+              <div className="row" style={{ marginBottom: q.word.phonetic ? 4 : 28 }}>
                 <h1 style={{ fontSize: 32 }}>{q.word.english}</h1>
                 <button onClick={() => speak(q.word.english)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer' }}>🔊</button>
               </div>
+              {q.word.phonetic && (
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
+                  style={{ color: 'var(--gray)', fontSize: 18, fontWeight: 600, marginBottom: 24 }}
+                >
+                  {q.word.phonetic}
+                </motion.div>
+              )}
             </>
           )}
           {q.mode === 'k2e' && (
@@ -243,11 +271,21 @@ export default function QuizSession() {
               <strong style={{ fontSize: 20, color: feedback.correct ? 'var(--green-dark)' : 'var(--red-dark)' }}>
                 {feedback.correct ? '정답이에요! 🎉' : '아쉬워요 😢'}
               </strong>
-              {!feedback.correct && (
-                <div style={{ marginTop: 6, fontWeight: 700, color: 'var(--red-dark)' }}>
-                  {q.word.english} = {q.word.korean}
-                </div>
-              )}
+              <div className="row" style={{ marginTop: 8, gap: 8, flexWrap: 'wrap' }}>
+                <strong style={{ fontSize: 18, color: feedback.correct ? 'var(--green-dark)' : 'var(--red-dark)' }}>
+                  {q.word.english}
+                </strong>
+                {q.word.phonetic && (
+                  <span style={{ fontSize: 15, fontWeight: 600, color: feedback.correct ? 'var(--green-dark)' : 'var(--red-dark)', opacity: 0.8 }}>
+                    {q.word.phonetic}
+                  </span>
+                )}
+                <button onClick={() => speak(q.word.english)}
+                  style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', padding: 0 }}>🔊</button>
+                <span style={{ fontWeight: 700, color: feedback.correct ? 'var(--green-dark)' : 'var(--red-dark)' }}>
+                  = {q.word.korean}
+                </span>
+              </div>
               <button className={`btn ${feedback.correct ? 'btn-green' : 'btn-red'}`} style={{ marginTop: 14 }} onClick={next}>
                 {idx + 1 < total ? '다음 문제' : '결과 보기'}
               </button>

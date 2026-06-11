@@ -21,7 +21,7 @@ export async function createShare(uid, ownerName, title, words) {
     ownerId: uid,
     ownerName,
     title,
-    words: words.map((w) => ({ english: w.english, korean: w.korean })),
+    words: words.map((w) => ({ english: w.english, korean: w.korean, phonetic: w.phonetic || '' })),
     importCount: 0,
     createdAt: Timestamp.now(),
     expiresAt: Timestamp.fromDate(expires)

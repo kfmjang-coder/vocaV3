@@ -28,10 +28,11 @@ export async function extractWords(gemini, base64, mimeType) {
   const prompt = [
     '이 이미지에서 영어 단어를 전부 찾아줘.',
     '각 단어에 대해 중학생 수준의 한국어 뜻을 1~2개 제공해줘 (여러 뜻은 세미콜론으로 구분).',
+    '각 단어의 미국식 발음기호(IPA)도 슬래시로 감싸서 제공해줘.',
     '문장이 있으면 핵심 단어 단위로 분리해서 추출해줘.',
     '중복 단어는 한 번만 포함하고, 영어 단어는 기본형(원형)으로 정리해줘.',
     '반드시 아래 JSON 배열 형식으로만 응답해. 다른 텍스트는 절대 포함하지 마:',
-    '[{"english":"apple","korean":"사과"},{"english":"run","korean":"달리다; 운영하다"}]'
+    '[{"english":"apple","korean":"사과","phonetic":"/ˈæpəl/"},{"english":"run","korean":"달리다; 운영하다","phonetic":"/rʌn/"}]'
   ].join('\n');
 
   const text = await callGemini(gemini, {
@@ -50,8 +51,34 @@ export async function extractWords(gemini, base64, mimeType) {
     .filter((w) => w.english && w.korean)
     .map((w) => ({
       english: String(w.english).trim().toLowerCase(),
-      korean: String(w.korean).trim()
+      korean: String(w.korean).trim(),
+      phonetic: w.phonetic ? String(w.phonetic).trim() : ''
     }));
+}
+
+/** 발음기호가 없는 기존 단어들 일괄 보충 (퀴즈 시작 시 backfill용) */
+export async function fetchPhonetics(gemini, englishList) {
+  if (!englishList.length) return {};
+  const prompt = [
+    `다음 영어 단어들의 미국식 발음기호(IPA)를 슬래시로 감싸서 제공해줘: ${englishList.join(', ')}`,
+    '반드시 아래 JSON 배열 형식으로만 응답해. 다른 텍스트는 절대 포함하지 마:',
+    '[{"english":"apple","phonetic":"/ˈæpəl/"}]'
+  ].join('\n');
+  try {
+    const text = await callGemini(gemini, {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0, response_mime_type: 'application/json' }
+    });
+    const arr = parseJson(text);
+    if (!Array.isArray(arr)) return {};
+    const map = {};
+    for (const w of arr) {
+      if (w.english && w.phonetic) map[String(w.english).trim().toLowerCase()] = String(w.phonetic).trim();
+    }
+    return map;
+  } catch {
+    return {}; // 실패해도 퀴즈는 정상 진행
+  }
 }
 
 /** 듣고말하기 2차 의미 판정 (F3-④): 유의어도 정답 처리 */

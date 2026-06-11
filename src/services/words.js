@@ -39,6 +39,7 @@ export async function saveWords(uid, date, items, source = 'camera') {
     batch.set(ref, {
       english: it.english,
       korean: it.korean,
+      phonetic: it.phonetic || '',
       date,
       source,
       memorized: false,

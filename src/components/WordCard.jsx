@@ -30,6 +30,7 @@ export default function WordCard({ word, onDelete, onToggleMemorized }) {
         <div>
           <div className="row" style={{ gap: 8 }}>
             <strong style={{ fontSize: 17 }}>{word.english}</strong>
+            {word.phonetic && <span style={{ fontSize: 13, color: 'var(--gray-light)', fontWeight: 600 }}>{word.phonetic}</span>}
             {word.memorized && <span className="chip" style={{ background: 'var(--green-light)', color: 'var(--green-dark)' }}>외움</span>}
             {word.wrongCount > 0 && <span className="chip" style={{ background: 'var(--red-light)', color: 'var(--red-dark)' }}>오답 {word.wrongCount}</span>}
           </div>
