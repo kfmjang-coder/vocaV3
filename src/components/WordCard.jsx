@@ -3,7 +3,12 @@ import { speak, haptic } from '../hooks/useSpeech';
 
 export default function WordCard({ word, onDelete, onToggleMemorized }) {
   const x = useMotionValue(0);
-  const bg = useTransform(x, [-120, 0, 120], ['#FFDFE0', '#FFFFFF', '#D7FFB8']);
+  const dark = document.documentElement.dataset.theme === 'dark';
+  const bg = useTransform(
+    x,
+    [-120, 0, 120],
+    dark ? ['#3F181C', '#202F36', '#203A10'] : ['#FFDFE0', '#FFFFFF', '#D7FFB8']
+  );
 
   const handleDragEnd = (_, info) => {
     if (info.offset.x < -90) { haptic([20, 40, 20]); onDelete(word); }

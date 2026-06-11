@@ -52,7 +52,7 @@ export default function Wordbooks() {
             <div>
               <div className="row" style={{ gap: 8 }}>
                 <strong style={{ fontSize: 16 }}>{fmtDate(g.date)}</strong>
-                {shared && <span className="chip" style={{ background: '#EFE5FF', color: 'var(--purple)' }}>👥 공유받음</span>}
+                {shared && <span className="chip" style={{ background: 'var(--tint-purple)', color: 'var(--purple)' }}>👥 공유받음</span>}
               </div>
               <div style={{ fontSize: 13, color: 'var(--gray)', marginTop: 4 }}>
                 {g.words.length}개 단어 · 외운 단어 {memorized}개

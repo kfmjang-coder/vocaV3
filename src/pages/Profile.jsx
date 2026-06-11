@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { getAllWords, getProfile } from '../services/words';
+import { toggleTheme, isDark } from '../hooks/useTheme';
+import { haptic } from '../hooks/useSpeech';
 import { Page } from '../components/ui';
 
 const BADGES = [
@@ -20,6 +22,7 @@ export default function Profile() {
   const { user, logout, isAdmin } = useAuth();
   const nav = useNavigate();
   const [stats, setStats] = useState(null);
+  const [dark, setDark] = useState(isDark());
 
   useEffect(() => {
     (async () => {
@@ -52,7 +55,7 @@ export default function Profile() {
 
       {/* 스트릭 히어로 */}
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-        className="card center" style={{ background: '#FFF6D6', borderColor: 'var(--yellow)', padding: 22, marginBottom: 14 }}>
+        className="card center" style={{ background: 'var(--tint-yellow)', borderColor: 'var(--yellow)', padding: 22, marginBottom: 14 }}>
         <span style={{ fontSize: 44 }}>🔥</span>
         <strong style={{ fontSize: 30 }}>{stats.streak}일 연속</strong>
         <span style={{ fontSize: 13, color: 'var(--gray)', fontWeight: 700 }}>
@@ -88,12 +91,60 @@ export default function Profile() {
         })}
       </div>
 
+      {/* 다크 모드 토글 */}
+      <div className="card between" style={{ marginBottom: 20, padding: '14px 16px' }}>
+        <div className="row" style={{ gap: 10 }}>
+          <span style={{ fontSize: 22 }}>{dark ? '🌙' : '☀️'}</span>
+          <strong>다크 모드</strong>
+        </div>
+        <button
+          onClick={() => { haptic(15); setDark(toggleTheme() === 'dark'); }}
+          aria-label="다크 모드 전환"
+          style={{
+            width: 52, height: 30, borderRadius: 999, border: 'none', cursor: 'pointer',
+            background: dark ? 'var(--green)' : 'var(--line)',
+            position: 'relative', transition: 'background 0.25s'
+          }}
+        >
+          <motion.div
+            animate={{ x: dark ? 22 : 0 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            style={{
+              position: 'absolute', top: 3, left: 4,
+              width: 24, height: 24, borderRadius: '50%',
+              background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+            }}
+          />
+        </button>
+      </div>
+
       {isAdmin && (
         <button className="btn btn-blue" style={{ marginBottom: 10 }} onClick={() => nav('/admin')}>
           🛡️ 사용자 승인 관리
         </button>
       )}
       <button className="btn btn-white" onClick={logout}>로그아웃</button>
+
+      {/* 만든 사람 */}
+      <div className="card center" style={{ marginTop: 24, padding: 20, borderStyle: 'dashed' }}>
+        <span style={{ fontSize: 28 }}>🔨</span>
+        <strong style={{ fontSize: 15, marginTop: 6 }}>Made by 장재석</strong>
+        <p style={{ fontSize: 13, color: 'var(--gray)', margin: '8px 0 2px', lineHeight: 1.6, fontWeight: 600 }}>
+          "이거 앱으로 만들면 되는 거 아냐?"<br />
+          일상의 사소한 불편, 그냥 안 넘어가고<br />
+          진짜로 만들어버립니다 ⚒️
+        </p>
+        <p style={{ fontSize: 12, color: 'var(--gray-light)', margin: '6px 0 12px', fontWeight: 600 }}>
+          시우 · 지우의 단어 암기를 위해 아빠가 만든 첫 번째 앱 💚
+        </p>
+        <div className="row" style={{ gap: 8 }}>
+          <a href="tel:01086522639" className="chip" style={{ textDecoration: 'none' }}>📞 010-8652-2639</a>
+          <a href="mailto:kfmjang@gmail.com" className="chip" style={{ textDecoration: 'none' }}>✉️ 메일 보내기</a>
+        </div>
+        <span style={{ fontSize: 11, color: 'var(--gray-light)', marginTop: 12 }}>
+          시우지우 영어단어장 v1.2
+        </span>
+      </div>
     </Page>
   );
 }

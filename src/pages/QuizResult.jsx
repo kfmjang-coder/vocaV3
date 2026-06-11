@@ -37,7 +37,7 @@ export default function QuizResult() {
       <div style={{ fontSize: 48, fontWeight: 900, color: 'var(--green)', margin: '8px 0' }}>
         {count}<span style={{ fontSize: 24, color: 'var(--gray-light)' }}> / {total}</span>
       </div>
-      <span className="chip" style={{ background: '#FFF6D6', color: 'var(--orange)', fontSize: 15, padding: '6px 14px' }}>
+      <span className="chip" style={{ background: 'var(--tint-yellow)', color: 'var(--orange)', fontSize: 15, padding: '6px 14px' }}>
         🔥 연속 {streak}일째 학습 중!
       </span>
 

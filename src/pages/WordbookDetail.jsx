@@ -79,7 +79,7 @@ export default function WordbookDetail() {
           <motion.div
             initial={{ rotateY: 90, opacity: 0 }} animate={{ rotateY: 0, opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ type: 'spring', stiffness: 200, damping: 18 }}
-            className="card center" style={{ borderColor: 'var(--blue)', background: '#EFF9FF', marginBottom: 14, padding: 20 }}
+            className="card center" style={{ borderColor: 'var(--blue)', background: 'var(--tint-blue)', marginBottom: 14, padding: 20 }}
           >
             <span style={{ fontSize: 13, color: 'var(--gray)', fontWeight: 700 }}>공유 코드 (30일간 유효)</span>
             <strong style={{ fontSize: 34, letterSpacing: 6, color: 'var(--blue-dark)', margin: '6px 0' }}>{shareInfo.code}</strong>

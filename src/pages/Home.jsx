@@ -65,7 +65,7 @@ export default function Home() {
     <Page>
       <div className="between" style={{ marginBottom: 8 }}>
         <h1>안녕, {stats?.name?.split(' ')[0] || ''}! 👋</h1>
-        <span className="chip" style={{ background: '#FFF6D6', color: 'var(--orange)', fontSize: 14 }}>
+        <span className="chip" style={{ background: 'var(--tint-yellow)', color: 'var(--orange)', fontSize: 14 }}>
           🔥 {stats?.streak ?? 0}일
         </span>
       </div>
@@ -138,7 +138,7 @@ export default function Home() {
         <motion.div
           className="card card-press between"
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-          style={{ borderColor: 'var(--yellow)', background: '#FFFBEB' }}
+          style={{ borderColor: 'var(--yellow)', background: 'var(--tint-yellow)' }}
           onClick={() => nav('/quiz')}
         >
           <div>
