@@ -24,6 +24,21 @@ export default function Profile() {
   const [stats, setStats] = useState(null);
   const [dark, setDark] = useState(isDark());
   const [showInfo, setShowInfo] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  /** 앱 공유하기 — 폰 기본 공유창(카톡 등), 미지원 시 링크 복사 */
+  const shareApp = async () => {
+    haptic(15);
+    const url = location.origin;
+    const text = '📚 시우지우 영어단어장!\n교과서를 찍으면 단어장이 되고, 퀴즈로 저절로 외워져요 🎯\n(가입 후 관리자 승인을 받으면 바로 시작!)';
+    if (navigator.share) {
+      try { await navigator.share({ title: '시우지우 영어단어장', text, url }); } catch { /* 사용자가 취소 */ }
+    } else {
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -177,6 +192,21 @@ export default function Profile() {
           🛡️ 사용자 승인 관리
         </button>
       )}
+      <button className="btn btn-green" style={{ marginBottom: 10 }} onClick={shareApp}>
+        📤 친구에게 앱 공유하기
+      </button>
+      <AnimatePresence>
+        {copied && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="card" style={{
+              background: 'var(--green-light)', borderColor: 'var(--green)', color: 'var(--green-dark)',
+              fontWeight: 800, textAlign: 'center', fontSize: 14, marginBottom: 10, padding: 12
+            }}>
+            링크가 복사됐어요! 친구에게 붙여넣기 해주세요 📋
+          </motion.div>
+        )}
+      </AnimatePresence>
       <button className="btn btn-white" onClick={logout}>로그아웃</button>
 
       {/* 만든 사람 */}
