@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ⚠️ 배포 전 본인(관리자) 이메일로 변경하세요
+    function adminEmail() { return 'kfmjang@gmail.com'; }
+
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == adminEmail();
+    }
+    // 화이트리스트 승인 사용자 (관리자는 항상 허용)
+    function isAllowed() {
+      return isSignedIn() && (
+        isAdmin() ||
+        exists(/databases/$(database)/documents/allowedUsers/$(request.auth.token.email))
+      );
+    }
+
+    // 승인 사용자 목록: 본인 승인 여부만 조회 가능, 관리는 관리자만
+    match /allowedUsers/{email} {
+      allow get: if isSignedIn() && request.auth.token.email == email;
+      allow list, write: if isAdmin();
+    }
+
+    // 가입 신청: 본인 이메일로만 신청 생성, 관리자가 조회/삭제
+    match /accessRequests/{email} {
+      allow create: if isSignedIn() && request.auth.token.email == email;
+      allow get: if isSignedIn() && request.auth.token.email == email;
+      allow list, delete: if isAdmin();
+    }
+
+    // Gemini API 키 등 설정: 승인 사용자만 읽기, 쓰기는 콘솔에서만
+    match /config/{doc} {
+      allow read: if isAllowed();
+      allow write: if false;
+    }
+
+    // 사용자 데이터: 본인 것만 읽기/쓰기 (시우 ↔ 지우 데이터 완전 분리)
+    match /users/{uid}/{document=**} {
+      allow read, write: if isAllowed() && request.auth.uid == uid;
+    }
+    match /users/{uid} {
+      allow read, write: if isAllowed() && request.auth.uid == uid;
+    }
+
+    // 공유 단어장: 승인 사용자끼리 코드로 공유
+    match /sharedWordbooks/{code} {
+      allow get: if isAllowed();
+      allow create: if isAllowed() && request.resource.data.ownerId == request.auth.uid;
+      // importCount 증가만 허용 (다른 필드 변경 차단)
+      allow update: if isAllowed()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['importCount']);
+      allow delete: if isAllowed() && resource.data.ownerId == request.auth.uid;
+    }
+  }
+}

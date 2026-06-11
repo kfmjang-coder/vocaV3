@@ -1,0 +1,178 @@
+/* ===== 시우지우 영어단어장 디자인 시스템 (듀오링고 톤) ===== */
+:root {
+  --green: #58CC02;
+  --green-dark: #46A302;
+  --green-light: #D7FFB8;
+  --blue: #1CB0F6;
+  --blue-dark: #1899D6;
+  --yellow: #FFC800;
+  --orange: #FF9600;
+  --red: #FF4B4B;
+  --red-dark: #EA2B2B;
+  --red-light: #FFDFE0;
+  --purple: #CE82FF;
+  --ink: #3C3C3C;
+  --gray: #777777;
+  --gray-light: #AFAFAF;
+  --line: #E5E5E5;
+  --bg: #FFFFFF;
+  --bg-soft: #F7F7F7;
+  --radius: 16px;
+  --tab-h: 64px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  overscroll-behavior-y: contain;
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; }
+input, textarea { font-family: inherit; font-size: 16px; }
+
+#root { min-height: 100dvh; display: flex; flex-direction: column; }
+
+.page {
+  flex: 1;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 20px 20px calc(var(--tab-h) + var(--safe-b) + 24px);
+  min-height: 100dvh;
+}
+.page.no-tab { padding-bottom: 32px; }
+
+h1 { font-size: 24px; font-weight: 800; margin: 0 0 4px; }
+h2 { font-size: 18px; font-weight: 800; margin: 0 0 8px; }
+.sub { color: var(--gray); font-size: 14px; margin: 0 0 20px; }
+
+/* ===== 듀오링고식 3D 버튼 ===== */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 14px 20px;
+  border: none; border-radius: var(--radius);
+  font-size: 16px; font-weight: 800; letter-spacing: 0.5px;
+  cursor: pointer; user-select: none;
+  transition: transform 0.06s ease, box-shadow 0.06s ease, filter 0.15s;
+  min-height: 50px;
+}
+.btn:active { transform: translateY(4px); box-shadow: 0 0 0 !important; }
+.btn:disabled { opacity: 0.4; pointer-events: none; }
+.btn-green { background: var(--green); color: #fff; box-shadow: 0 4px 0 var(--green-dark); }
+.btn-blue { background: var(--blue); color: #fff; box-shadow: 0 4px 0 var(--blue-dark); }
+.btn-red { background: var(--red); color: #fff; box-shadow: 0 4px 0 var(--red-dark); }
+.btn-white {
+  background: #fff; color: var(--blue);
+  border: 2px solid var(--line); box-shadow: 0 4px 0 var(--line);
+}
+.btn-ghost { background: transparent; color: var(--gray); box-shadow: none; }
+.btn-sm { width: auto; padding: 8px 16px; min-height: 38px; font-size: 14px; border-radius: 12px; }
+
+/* ===== 카드 ===== */
+.card {
+  background: #fff; border: 2px solid var(--line);
+  border-radius: var(--radius); padding: 16px;
+}
+.card-press { transition: transform 0.08s; cursor: pointer; }
+.card-press:active { transform: scale(0.97); }
+
+/* ===== 퀴즈 선택지 ===== */
+.choice {
+  width: 100%; padding: 16px; margin-bottom: 12px;
+  background: #fff; border: 2px solid var(--line); border-bottom-width: 4px;
+  border-radius: var(--radius);
+  font-size: 17px; font-weight: 700; color: var(--ink);
+  cursor: pointer; text-align: center;
+  transition: all 0.1s;
+}
+.choice:active { border-bottom-width: 2px; transform: translateY(2px); }
+.choice.correct { background: var(--green-light); border-color: var(--green); color: var(--green-dark); }
+.choice.wrong { background: var(--red-light); border-color: var(--red); color: var(--red-dark); }
+.choice.dim { opacity: 0.45; }
+
+/* ===== 진행바 ===== */
+.progress-track {
+  height: 14px; background: var(--line); border-radius: 999px; overflow: hidden; flex: 1;
+}
+.progress-fill {
+  height: 100%; background: var(--green); border-radius: 999px;
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+}
+.progress-fill::after {
+  content: ''; position: absolute; top: 3px; left: 8px; right: 8px; height: 4px;
+  background: rgba(255,255,255,0.35); border-radius: 999px;
+}
+
+/* ===== 하단 탭바 ===== */
+.tabbar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+  display: flex; justify-content: space-around; align-items: center;
+  height: calc(var(--tab-h) + var(--safe-b));
+  padding-bottom: var(--safe-b);
+  background: #fff; border-top: 2px solid var(--line);
+}
+.tab-item {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: none; border: none; padding: 6px 14px; border-radius: 12px;
+  font-size: 11px; font-weight: 700; color: var(--gray-light); cursor: pointer;
+}
+.tab-item .ico { font-size: 24px; line-height: 1; }
+.tab-item.active { color: var(--green); }
+.tab-item.active .ico { transform: scale(1.1); }
+
+/* ===== 입력 ===== */
+.input {
+  width: 100%; padding: 14px 16px;
+  border: 2px solid var(--line); border-radius: var(--radius);
+  font-size: 16px; font-weight: 600; outline: none;
+  transition: border-color 0.15s;
+}
+.input:focus { border-color: var(--blue); }
+
+/* ===== 스켈레톤 ===== */
+@keyframes shimmer { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+.skeleton {
+  background: var(--line); border-radius: 12px;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* ===== 흔들림(오답) ===== */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+.shake { animation: shake 0.4s; }
+
+/* ===== 마이크 파형 ===== */
+@keyframes wave { 0%, 100% { height: 8px; } 50% { height: 28px; } }
+.wave-bar {
+  width: 6px; border-radius: 3px; background: var(--blue);
+  animation: wave 0.9s ease-in-out infinite;
+}
+
+/* ===== 기타 ===== */
+.row { display: flex; align-items: center; gap: 12px; }
+.between { display: flex; align-items: center; justify-content: space-between; }
+.center { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 999px;
+  background: var(--bg-soft); color: var(--gray);
+  font-size: 12px; font-weight: 700;
+}
+.badge-icon {
+  width: 64px; height: 64px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px; background: var(--bg-soft); border: 2px solid var(--line);
+}
+.badge-icon.earned { background: #FFF6D6; border-color: var(--yellow); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
