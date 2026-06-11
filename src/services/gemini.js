@@ -29,10 +29,12 @@ export async function extractWords(gemini, base64, mimeType) {
     '이 이미지에서 영어 단어를 전부 찾아줘.',
     '각 단어에 대해 중학생 수준의 한국어 뜻을 1~2개 제공해줘 (여러 뜻은 세미콜론으로 구분).',
     '각 단어의 미국식 발음기호(IPA)도 슬래시로 감싸서 제공해줘.',
+    '각 단어의 품사를 한글로 제공해줘 (명사/동사/형용사/부사/전치사/접속사/대명사/감탄사 중 하나).',
+    '각 단어마다 중학교 2학년 수준의 짧고 쉬운 영어 예문(5~8단어)과 한국어 해석도 만들어줘.',
     '문장이 있으면 핵심 단어 단위로 분리해서 추출해줘.',
     '중복 단어는 한 번만 포함하고, 영어 단어는 기본형(원형)으로 정리해줘.',
     '반드시 아래 JSON 배열 형식으로만 응답해. 다른 텍스트는 절대 포함하지 마:',
-    '[{"english":"apple","korean":"사과","phonetic":"/ˈæpəl/"},{"english":"run","korean":"달리다; 운영하다","phonetic":"/rʌn/"}]'
+    '[{"english":"apple","korean":"사과","phonetic":"/ˈæpəl/","pos":"명사","example":"I eat an apple every day.","exampleKo":"나는 매일 사과를 먹어요."}]'
   ].join('\n');
 
   const text = await callGemini(gemini, {
@@ -52,28 +54,37 @@ export async function extractWords(gemini, base64, mimeType) {
     .map((w) => ({
       english: String(w.english).trim().toLowerCase(),
       korean: String(w.korean).trim(),
-      phonetic: w.phonetic ? String(w.phonetic).trim() : ''
+      phonetic: w.phonetic ? String(w.phonetic).trim() : '',
+      pos: w.pos ? String(w.pos).trim() : '',
+      example: w.example ? String(w.example).trim() : '',
+      exampleKo: w.exampleKo ? String(w.exampleKo).trim() : ''
     }));
 }
 
-/** 발음기호가 없는 기존 단어들 일괄 보충 (퀴즈 시작 시 backfill용) */
-export async function fetchPhonetics(gemini, englishList) {
+/** 발음기호/품사/예문이 없는 기존 단어들 일괄 보충 (퀴즈 시작 시 backfill용) */
+export async function fetchWordDetails(gemini, englishList) {
   if (!englishList.length) return {};
   const prompt = [
-    `다음 영어 단어들의 미국식 발음기호(IPA)를 슬래시로 감싸서 제공해줘: ${englishList.join(', ')}`,
+    `다음 영어 단어들에 대해 각각: 미국식 발음기호(IPA, 슬래시로 감싸기), 한글 품사(명사/동사/형용사/부사/전치사/접속사/대명사/감탄사 중 하나), 중학교 2학년 수준의 짧고 쉬운 영어 예문(5~8단어), 예문의 한국어 해석을 제공해줘: ${englishList.join(', ')}`,
     '반드시 아래 JSON 배열 형식으로만 응답해. 다른 텍스트는 절대 포함하지 마:',
-    '[{"english":"apple","phonetic":"/ˈæpəl/"}]'
+    '[{"english":"apple","phonetic":"/ˈæpəl/","pos":"명사","example":"I eat an apple every day.","exampleKo":"나는 매일 사과를 먹어요."}]'
   ].join('\n');
   try {
     const text = await callGemini(gemini, {
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0, response_mime_type: 'application/json' }
+      generationConfig: { temperature: 0.3, response_mime_type: 'application/json' }
     });
     const arr = parseJson(text);
     if (!Array.isArray(arr)) return {};
     const map = {};
     for (const w of arr) {
-      if (w.english && w.phonetic) map[String(w.english).trim().toLowerCase()] = String(w.phonetic).trim();
+      if (!w.english) continue;
+      map[String(w.english).trim().toLowerCase()] = {
+        phonetic: w.phonetic ? String(w.phonetic).trim() : '',
+        pos: w.pos ? String(w.pos).trim() : '',
+        example: w.example ? String(w.example).trim() : '',
+        exampleKo: w.exampleKo ? String(w.exampleKo).trim() : ''
+      };
     }
     return map;
   } catch {

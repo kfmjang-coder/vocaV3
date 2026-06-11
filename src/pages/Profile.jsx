@@ -142,7 +142,7 @@ export default function Profile() {
           <a href="mailto:kfmjang@gmail.com" className="chip" style={{ textDecoration: 'none' }}>✉️ 메일 보내기</a>
         </div>
         <span style={{ fontSize: 11, color: 'var(--gray-light)', marginTop: 12 }}>
-          시우지우 영어단어장 v1.2
+          시우지우 영어단어장 v1.3
         </span>
       </div>
     </Page>

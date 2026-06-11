@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { getAllWords, recordAnswer, getProfile, updateStreak, updateWord } from '../services/words';
 import { buildSession, matchKorean, matchEnglish } from '../services/quiz';
-import { judgeMeaning, fetchPhonetics } from '../services/gemini';
+import { judgeMeaning, fetchWordDetails } from '../services/gemini';
 import { speak, useRecognition, haptic } from '../hooks/useSpeech';
 
 export default function QuizSession() {
@@ -27,19 +27,33 @@ export default function QuizSession() {
       const session = buildSession(pool, all, state.mode);
       setQuestions(session);
 
-      // 발음기호 없는 기존 단어 자동 보충 (한 번에 일괄 조회 → DB 저장)
-      const missing = [...new Set(session.filter((q) => !q.word.phonetic).map((q) => q.word.english))];
+      // 발음기호/품사/예문 없는 기존 단어 자동 보충 (한 번에 일괄 조회 → DB 저장)
+      const missing = [...new Set(
+        session.filter((q) => !q.word.phonetic || !q.word.example || !q.word.pos).map((q) => q.word.english)
+      )];
       if (missing.length && navigator.onLine && gemini?.apiKey) {
-        fetchPhonetics(gemini, missing).then((map) => {
+        fetchWordDetails(gemini, missing).then((map) => {
           if (!Object.keys(map).length) return;
+          // 비어있는 필드만 채움 (기존 값 보존)
+          const patchFor = (w) => {
+            const d = map[w.english];
+            if (!d) return null;
+            const patch = {};
+            for (const f of ['phonetic', 'pos', 'example', 'exampleKo']) {
+              if (!w[f] && d[f]) patch[f] = d[f];
+            }
+            return Object.keys(patch).length ? patch : null;
+          };
           setQuestions((prev) =>
-            prev.map((q) =>
-              map[q.word.english] ? { ...q, word: { ...q.word, phonetic: map[q.word.english] } } : q
-            )
+            prev.map((q) => {
+              const patch = patchFor(q.word);
+              return patch ? { ...q, word: { ...q.word, ...patch } } : q;
+            })
           );
           // 다음부터는 호출 없이 표시되도록 저장 (오프라인 대비)
           session.forEach((q) => {
-            if (map[q.word.english]) updateWord(user.uid, q.word.id, { phonetic: map[q.word.english] }).catch(() => {});
+            const patch = patchFor(q.word);
+            if (patch) updateWord(user.uid, q.word.id, patch).catch(() => {});
           });
         });
       }
@@ -125,6 +139,18 @@ export default function QuizSession() {
 
   const answerLabel = q.mode === 'e2k' ? q.word.korean : q.word.english;
 
+  /** 예문 속 대상 단어 하이라이트 */
+  const renderExample = (example, word) => {
+    try {
+      const parts = example.split(new RegExp(`(${word}\\w*)`, 'i'));
+      return parts.map((p, i) =>
+        p.toLowerCase().startsWith(word.toLowerCase())
+          ? <strong key={i} style={{ color: 'var(--blue)' }}>{p}</strong>
+          : p
+      );
+    } catch { return example; }
+  };
+
   return (
     <div className="page no-tab">
       {/* 상단: 닫기 + 진행바 */}
@@ -151,6 +177,7 @@ export default function QuizSession() {
               <p className="sub">알맞은 뜻을 골라요</p>
               <div className="row" style={{ marginBottom: q.word.phonetic ? 4 : 28 }}>
                 <h1 style={{ fontSize: 32 }}>{q.word.english}</h1>
+                {q.word.pos && <span className="chip">{q.word.pos}</span>}
                 <button onClick={() => speak(q.word.english)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer' }}>🔊</button>
               </div>
               {q.word.phonetic && (
@@ -293,6 +320,9 @@ export default function QuizSession() {
                 <strong style={{ fontSize: 18, color: feedback.correct ? 'var(--green-dark)' : 'var(--red-dark)' }}>
                   {q.word.english}
                 </strong>
+                {q.word.pos && (
+                  <span className="chip" style={{ fontSize: 11 }}>{q.word.pos}</span>
+                )}
                 {q.word.phonetic && (
                   <span style={{ fontSize: 15, fontWeight: 600, color: feedback.correct ? 'var(--green-dark)' : 'var(--red-dark)', opacity: 0.8 }}>
                     {q.word.phonetic}
@@ -304,6 +334,28 @@ export default function QuizSession() {
                   = {q.word.korean}
                 </span>
               </div>
+              {/* 예문: 회상 직후가 문맥 학습의 골든타임 */}
+              {q.word.example && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+                  className="row"
+                  style={{
+                    marginTop: 10, padding: '10px 14px', gap: 10, alignItems: 'flex-start',
+                    background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12
+                  }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', lineHeight: 1.5 }}>
+                      {renderExample(q.word.example, q.word.english)}
+                    </div>
+                    {q.word.exampleKo && (
+                      <div style={{ fontSize: 13, color: 'var(--gray)', marginTop: 3 }}>{q.word.exampleKo}</div>
+                    )}
+                  </div>
+                  <button onClick={() => speak(q.word.example, 0.9)}
+                    style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', padding: 0, marginTop: 2 }}
+                    aria-label="예문 듣기">🔊</button>
+                </motion.div>
+              )}
               <button className={`btn ${feedback.correct ? 'btn-green' : 'btn-red'}`} style={{ marginTop: 14 }} onClick={next}>
                 {idx + 1 < total ? '다음 문제' : '결과 보기'}
               </button>
