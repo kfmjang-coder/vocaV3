@@ -69,7 +69,7 @@ export default function Quiz() {
             style={{
               padding: '10px 14px', borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: 'pointer',
               border: `2px solid ${range === r.id ? 'var(--green)' : 'var(--line)'}`,
-              background: range === r.id ? 'var(--green-light)' : '#fff',
+              background: range === r.id ? 'var(--green-light)' : 'var(--card)',
               color: range === r.id ? 'var(--green-dark)' : r.count === 0 ? 'var(--gray-light)' : 'var(--ink)'
             }}>
             {r.label} ({r.count})
@@ -85,7 +85,7 @@ export default function Quiz() {
           style={{
             marginBottom: 10,
             borderColor: mode === m.id ? 'var(--green)' : 'var(--line)',
-            background: mode === m.id ? 'var(--green-light)' : '#fff'
+            background: mode === m.id ? 'var(--green-light)' : 'var(--card)'
           }}>
           <span style={{ fontSize: 24 }}>{m.emoji}</span>
           <div>
