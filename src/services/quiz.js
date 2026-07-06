@@ -56,9 +56,11 @@ export function buildChoices(answerWord, allWords, field) {
   return shuffle([answerWord[field], ...uniq]);
 }
 
-/** 세션 문제 생성. mode: e2k | k2e | spell | listen | mix */
-export function buildSession(words, allWords, mode) {
-  const picked = pickSessionWords(words);
+/** 세션 문제 생성. mode: e2k | k2e | spell | listen | mix
+ *  doneIds: 이번 순회에서 이미 푼 단어 id 집합(Set) → 제외하고 다음 10개 출제 */
+export function buildSession(words, allWords, mode, doneIds = null) {
+  const remaining = doneIds ? words.filter((w) => !doneIds.has(w.id)) : words;
+  const picked = pickSessionWords(remaining);
   const modes = ['e2k', 'k2e', 'spell', 'listen'];
   return picked.map((w) => {
     const m = mode === 'mix' ? modes[Math.floor(Math.random() * modes.length)] : mode;

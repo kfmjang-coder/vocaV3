@@ -22,9 +22,17 @@ export default function QuizSession() {
 
   useEffect(() => {
     if (!state?.poolIds) return;
+    // 세션(재)시작 시 상태 초기화 — '이어서 하기'로 같은 경로 재진입해도 리셋됨
+    setQuestions(null);
+    setIdx(0);
+    setScore(0);
+    setFeedback(null);
+    setTyped('');
+    wrongRef.current = [];
     getAllWords(user.uid).then((all) => {
       const pool = all.filter((w) => state.poolIds.includes(w.id));
-      const session = buildSession(pool, all, state.mode);
+      const done = new Set(state.doneIds || []); // 이어서 하기: 이미 푼 단어 제외
+      const session = buildSession(pool, all, state.mode, done);
       setQuestions(session);
 
       // 발음기호/품사/예문 없는 기존 단어 자동 보충 (한 번에 일괄 조회 → DB 저장)
@@ -58,7 +66,8 @@ export default function QuizSession() {
         });
       }
     });
-  }, []);
+    // 이어서 하기로 재진입하면 doneIds 개수가 바뀌므로 세션 재구성
+  }, [state?.doneIds?.length]);
 
   const q = questions?.[idx];
 
@@ -109,9 +118,21 @@ export default function QuizSession() {
     } else {
       const profile = await getProfile(user.uid).catch(() => null);
       const streak = await updateStreak(user.uid, profile, score, total).catch(() => profile?.streak || 1);
+      // 이번 세션에서 푼 단어 id + 이전까지 푼 것 누적
+      const sessionIds = questions.map((q) => q.word.id);
+      const doneIds = [...new Set([...(state.doneIds || []), ...sessionIds])];
       nav('/quiz/result', {
         replace: true,
-        state: { score, total, wrong: wrongRef.current.map((w) => ({ english: w.english, korean: w.korean })), streak }
+        state: {
+          score, total,
+          wrong: wrongRef.current.map((w) => ({ english: w.english, korean: w.korean })),
+          streak,
+          // 이어서 하기용 진도 정보
+          poolIds: state.poolIds,
+          mode: state.mode,
+          doneIds,
+          poolTotal: state.poolIds.length
+        }
       });
     }
   };
