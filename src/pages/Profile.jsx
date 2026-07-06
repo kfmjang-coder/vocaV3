@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { getAllWords, getProfile } from '../services/words';
 import { toggleTheme, isDark } from '../hooks/useTheme';
-import { haptic } from '../hooks/useSpeech';
+import { haptic, speak, VOICE_PROFILES, VOICE_ORDER, getVoiceProfile, setVoiceProfile } from '../hooks/useSpeech';
 import { Page } from '../components/ui';
 
 const BADGES = [
@@ -25,6 +25,15 @@ export default function Profile() {
   const [dark, setDark] = useState(isDark());
   const [showInfo, setShowInfo] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [voice, setVoice] = useState(getVoiceProfile());
+
+  const chooseVoice = (id) => {
+    haptic(12);
+    setVoice(id);
+    setVoiceProfile(id);
+    // 선택 즉시 미리듣기 (랜덤은 실제 뽑힌 음성으로 들림)
+    setTimeout(() => speak('Hello! Nice to meet you.'), 60);
+  };
 
   /** 앱 공유하기 — 폰 기본 공유창(카톡 등), 미지원 시 링크 복사 */
   const shareApp = async () => {
@@ -185,6 +194,43 @@ export default function Profile() {
             }}
           />
         </button>
+      </div>
+
+      {/* 퀴즈 발음 목소리 선택 */}
+      <div className="card" style={{ marginBottom: 20, padding: 16 }}>
+        <div className="between" style={{ marginBottom: 12 }}>
+          <div className="row" style={{ gap: 10 }}>
+            <span style={{ fontSize: 22 }}>🔊</span>
+            <div>
+              <strong>퀴즈 발음 목소리</strong>
+              <div style={{ fontSize: 12, color: 'var(--gray)' }}>고르면 바로 들려줘요</div>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          {VOICE_ORDER.map((id) => {
+            const p = VOICE_PROFILES[id];
+            const on = voice === id;
+            return (
+              <button key={id} onClick={() => chooseVoice(id)}
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                  padding: '12px 4px', borderRadius: 14, cursor: 'pointer',
+                  border: `2px solid ${on ? 'var(--green)' : 'var(--line)'}`,
+                  background: on ? 'var(--green-light)' : 'var(--card)',
+                  color: on ? 'var(--green-dark)' : 'var(--ink)',
+                  fontWeight: 800, fontSize: 13, transition: 'all 0.12s'
+                }}>
+                <span style={{ fontSize: 26 }}>{p.emoji}</span>
+                {p.label}
+                {on && <span style={{ fontSize: 10, color: 'var(--green)' }}>● 선택됨</span>}
+              </button>
+            );
+          })}
+        </div>
+        <p style={{ fontSize: 11, color: 'var(--gray-light)', marginTop: 10, lineHeight: 1.5 }}>
+          ℹ️ 기기에 목소리가 없으면 음높이·속도로 흉내 내요. 랜덤은 문제마다 목소리가 바뀌어요!
+        </p>
       </div>
 
       {isAdmin && (
