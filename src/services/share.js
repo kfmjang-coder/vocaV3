@@ -1,6 +1,6 @@
 import { doc, getDoc, setDoc, updateDoc, increment, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { saveWords } from './words';
+import { saveWords, todayStr } from './words';
 
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // 헷갈리는 문자(I,L,O,0,1) 제외
 const genCode = () =>
@@ -38,13 +38,17 @@ export async function getShare(code) {
   return { data: { code: snap.id, ...data } };
 }
 
-/** 공유 단어장을 내 단어장으로 복사 — Gemini 재호출 없음 */
+/** 공유 단어장을 내 단어장으로 복사(새 단어장 생성) — Gemini 재호출 없음 */
 export async function importShare(uid, share, date) {
-  const added = await saveWords(uid, date, share.words, `shared:${share.ownerName}`);
+  const { added, bookId } = await saveWords(uid, share.words, {
+    title: share.title || `${share.ownerName}님의 단어장`,
+    date: date || todayStr(),
+    source: `shared:${share.ownerName}`
+  });
   try {
     await updateDoc(doc(db, 'sharedWordbooks', share.code), { importCount: increment(1) });
   } catch { /* 카운트 실패는 무시 */ }
-  return added;
+  return { added, bookId };
 }
 
 /** Web Share API로 카톡 등 공유 (폴백: 클립보드) */

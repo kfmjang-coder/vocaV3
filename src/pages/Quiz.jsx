@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getAllWords, todayStr, dueWords } from '../services/words';
+import { getAllWords, groupByBook, todayStr, dueWords } from '../services/words';
 import { Page, EmptyState } from '../components/ui';
 import { haptic } from '../hooks/useSpeech';
+
+const fmtDate = (s) => {
+  const [y, m, d] = s.split('-');
+  return `${Number(m)}/${Number(d)}`;
+};
 
 const MODES = [
   { id: 'e2k', emoji: '🇺🇸→🇰🇷', title: '영어 → 한글', desc: '뜻 고르기' },
@@ -18,30 +23,42 @@ export default function Quiz() {
   const nav = useNavigate();
   const { state } = useLocation();
   const [all, setAll] = useState(null);
-  const [range, setRange] = useState(state?.date ? 'date' : 'today');
+  const [books, setBooks] = useState([]);
+  const [range, setRange] = useState(state?.bookId ? `book:${state.bookId}` : 'today');
   const [mode, setMode] = useState('e2k');
 
-  useEffect(() => { getAllWords(user.uid).then(setAll); }, [user]);
+  useEffect(() => {
+    getAllWords(user.uid).then((words) => {
+      setAll(words);
+      setBooks(groupByBook(words));
+    });
+  }, [user]);
 
   if (all === null) return <Page><div className="skeleton" style={{ height: 200 }} /></Page>;
 
   const t = todayStr();
-  const pools = {
+  const basePools = {
     today: all.filter((w) => w.date === t),
-    date: state?.date ? all.filter((w) => w.date === state.date) : [],
     wrong: all.filter((w) => (w.wrongCount || 0) > 0),
     due: dueWords(all),
     all
   };
-  const RANGES = [
-    state?.date && { id: 'date', label: `${state.date} 단어장`, count: pools.date.length },
-    { id: 'today', label: '오늘 단어', count: pools.today.length },
-    { id: 'due', label: '복습할 단어 🔔', count: pools.due.length },
-    { id: 'wrong', label: '오답노트 ❌', count: pools.wrong.length },
-    { id: 'all', label: '전체 단어', count: pools.all.length }
-  ].filter(Boolean);
+  const getPool = (rangeId) => {
+    if (rangeId.startsWith('book:')) {
+      const bid = rangeId.slice(5);
+      return all.filter((w) => w.bookId === bid);
+    }
+    return basePools[rangeId] || [];
+  };
 
-  const pool = pools[range] || [];
+  const RANGES = [
+    { id: 'today', label: '오늘 단어', count: basePools.today.length },
+    { id: 'due', label: '복습할 단어 🔔', count: basePools.due.length },
+    { id: 'wrong', label: '오답노트 ❌', count: basePools.wrong.length },
+    { id: 'all', label: '전체 단어', count: basePools.all.length }
+  ];
+
+  const pool = getPool(range);
   const canStart = pool.length >= 1;
 
   if (all.length === 0) {
@@ -54,39 +71,48 @@ export default function Quiz() {
     );
   }
 
+  const rangeBtn = (r) => (
+    <button key={r.id} className="btn-sm"
+      onClick={() => { haptic(10); setRange(r.id); }}
+      disabled={r.count === 0}
+      style={{
+        padding: '10px 14px', borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: 'pointer',
+        border: `2px solid ${range === r.id ? 'var(--green)' : 'var(--line)'}`,
+        background: range === r.id ? 'var(--green-light)' : 'var(--card)',
+        color: range === r.id ? 'var(--green-dark)' : r.count === 0 ? 'var(--gray-light)' : 'var(--ink)'
+      }}>
+      {r.label} ({r.count})
+    </button>
+  );
+
   return (
     <Page>
       <h1>퀴즈 🎯</h1>
       <p className="sub">한 번에 10단어씩, 짧고 굵게!</p>
 
       <h2>범위</h2>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
-        {RANGES.map((r) => (
-          <button key={r.id}
-            className="btn-sm"
-            onClick={() => { haptic(10); setRange(r.id); }}
-            disabled={r.count === 0}
-            style={{
-              padding: '10px 14px', borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: 'pointer',
-              border: `2px solid ${range === r.id ? 'var(--green)' : 'var(--line)'}`,
-              background: range === r.id ? 'var(--green-light)' : 'var(--card)',
-              color: range === r.id ? 'var(--green-dark)' : r.count === 0 ? 'var(--gray-light)' : 'var(--ink)'
-            }}>
-            {r.label} ({r.count})
-          </button>
-        ))}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+        {RANGES.map(rangeBtn)}
       </div>
+
+      {books.length > 0 && (
+        <>
+          <div style={{ fontSize: 13, color: 'var(--gray)', fontWeight: 700, marginBottom: 8 }}>단어장별</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+            {books.map((b) => rangeBtn({
+              id: `book:${b.bookId}`,
+              label: b.title || fmtDate(b.date),
+              count: b.words.length
+            }))}
+          </div>
+        </>
+      )}
 
       <h2>모드</h2>
       {MODES.map((m) => (
-        <div key={m.id}
-          className="card card-press row"
+        <div key={m.id} className="card card-press row"
           onClick={() => { haptic(10); setMode(m.id); }}
-          style={{
-            marginBottom: 10,
-            borderColor: mode === m.id ? 'var(--green)' : 'var(--line)',
-            background: mode === m.id ? 'var(--green-light)' : 'var(--card)'
-          }}>
+          style={{ marginBottom: 10, borderColor: mode === m.id ? 'var(--green)' : 'var(--line)', background: mode === m.id ? 'var(--green-light)' : 'var(--card)' }}>
           <span style={{ fontSize: 24 }}>{m.emoji}</span>
           <div>
             <strong>{m.title}</strong>

@@ -33,8 +33,8 @@ export default function Import() {
   const doImport = async () => {
     setImporting(true);
     haptic(20);
-    const added = await importShare(user.uid, preview, todayStr());
-    nav(`/wordbooks/${todayStr()}`, { replace: true, state: { savedCount: added } });
+    const { added, bookId } = await importShare(user.uid, preview, todayStr());
+    nav(`/wordbooks/${encodeURIComponent(bookId)}`, { replace: true, state: { savedCount: added } });
   };
 
   return (

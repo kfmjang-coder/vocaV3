@@ -40,7 +40,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/capture" element={<Capture />} />
           <Route path="/wordbooks" element={<Wordbooks />} />
-          <Route path="/wordbooks/:date" element={<WordbookDetail />} />
+          <Route path="/wordbooks/:bookId" element={<WordbookDetail />} />
           <Route path="/quiz" element={<Quiz />} />
           <Route path="/quiz/session" element={<QuizSession />} />
           <Route path="/quiz/result" element={<QuizResult />} />
