@@ -112,6 +112,9 @@ export default function Capture() {
           {selectMode ? '선택 취소' : '☑️ 나눠담기'}
         </button>
       </div>
+      {state?.note && (
+        <div className="chip" style={{ background: 'var(--tint-yellow)', color: 'var(--orange)', marginBottom: 6 }}>ℹ️ {state.note}</div>
+      )}
       <p className="sub">
         {selectMode
           ? `단어를 눌러 선택하세요 · ${selected.size}개 선택됨`

@@ -14,6 +14,7 @@ export default function Home() {
   const fileRef = useRef(null);      // 카메라 촬영
   const galleryRef = useRef(null);   // 앨범에서 불러오기
   const [analyzing, setAnalyzing] = useState(false);
+  const [progress, setProgress] = useState(null); // { cur, total } 다중 분석 진행률
   const [error, setError] = useState('');
   const [stats, setStats] = useState(null);
 
@@ -32,31 +33,55 @@ export default function Home() {
   }, [user]);
 
   const onPick = async (e) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files || []);
     e.target.value = '';
-    if (!file) return;
+    if (!files.length) return;
     setError('');
 
     if (!navigator.onLine) { setError('인터넷 연결이 필요해요. 저장된 단어로 퀴즈는 가능해요!'); return; }
 
-    const ok = await checkAndCountUsage(user.uid);
-    if (!ok) { setError(`오늘 사진 분석 ${DAILY_LIMIT}회를 모두 사용했어요. 내일 다시 만나요!`); return; }
-
     setAnalyzing(true);
     try {
-      const { base64, mimeType } = await compressImage(file);
-      const words = await extractWords(gemini, base64, mimeType);
-      if (!words.length) {
+      const merged = [];
+      const seen = new Set();
+      let failCount = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        // 사진마다 일일 분석 횟수 차감 (여러 장이면 여러 번)
+        const ok = await checkAndCountUsage(user.uid);
+        if (!ok) {
+          setError(`오늘 사진 분석 ${DAILY_LIMIT}회를 모두 사용했어요.${merged.length ? ' 지금까지 찾은 단어만 저장할게요!' : ' 내일 다시 만나요!'}`);
+          break;
+        }
+        // 여러 장일 때 진행률 표시
+        if (files.length > 1) setProgress({ cur: i + 1, total: files.length });
+
+        try {
+          const { base64, mimeType } = await compressImage(files[i]);
+          const words = await extractWords(gemini, base64, mimeType);
+          for (const w of words) {
+            if (!seen.has(w.english)) { seen.add(w.english); merged.push(w); }
+          }
+        } catch (err) {
+          if (err.message === 'NO_KEY') throw err; // 설정 오류는 즉시 중단
+          failCount++;
+        }
+      }
+
+      setProgress(null);
+      if (!merged.length) {
         setError('단어를 못 찾았어요. 글자가 잘 보이게 다시 찍어주세요! 📷');
       } else {
         haptic(30);
-        nav('/capture', { state: { words } });
+        const note = failCount > 0 ? `${failCount}장은 단어를 못 찾았어요` : '';
+        nav('/capture', { state: { words: merged, note } });
       }
     } catch (err) {
       setError(err.message === 'NO_KEY'
         ? '설정 오류예요. 관리자에게 알려주세요.'
         : '분석에 실패했어요. 잠시 후 다시 시도해주세요.');
     } finally {
+      setProgress(null);
       setAnalyzing(false);
     }
   };
@@ -90,7 +115,9 @@ export default function Home() {
         {analyzing ? (
           <>
             <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }} style={{ fontSize: 44 }}>🔍</motion.div>
-            <strong style={{ color: 'var(--gray)', fontSize: 17, marginTop: 8 }}>단어 찾는 중...</strong>
+            <strong style={{ color: 'var(--gray)', fontSize: 17, marginTop: 8 }}>
+              {progress ? `단어 찾는 중... (${progress.cur}/${progress.total}장)` : '단어 찾는 중...'}
+            </strong>
             <span style={{ color: 'var(--gray-light)', fontSize: 13, marginTop: 4 }}>AI가 사진을 읽고 있어요</span>
           </>
         ) : (
@@ -102,7 +129,7 @@ export default function Home() {
         )}
       </motion.button>
       <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={onPick} />
-      <input ref={galleryRef} type="file" accept="image/*" hidden onChange={onPick} />
+      <input ref={galleryRef} type="file" accept="image/*" multiple hidden onChange={onPick} />
 
       {/* 앨범에서 불러오기 */}
       <button
@@ -111,7 +138,7 @@ export default function Home() {
         disabled={analyzing}
         onClick={() => { haptic(10); galleryRef.current?.click(); }}
       >
-        🖼️ 앨범에서 사진 불러오기
+        🖼️ 앨범에서 사진 불러오기 (여러 장 가능)
       </button>
 
       {error && (
