@@ -12,6 +12,7 @@ import Quiz from './pages/Quiz';
 import QuizSession from './pages/QuizSession';
 import QuizResult from './pages/QuizResult';
 import Import from './pages/Import';
+import WrongNote from './pages/WrongNote';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
 
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="/quiz" element={<Quiz />} />
           <Route path="/quiz/session" element={<QuizSession />} />
           <Route path="/quiz/result" element={<QuizResult />} />
+          <Route path="/wrong-note" element={<WrongNote />} />
           <Route path="/import" element={<Import />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/admin" element={<Admin />} />

@@ -145,21 +145,39 @@ export async function recordAnswer(uid, word, correct) {
     const stage = Math.min((word.reviewStage || 0) + 1, INTERVALS.length);
     const next = new Date();
     next.setDate(next.getDate() + INTERVALS[stage - 1]);
-    await updateDoc(ref, {
+    // 오답노트 졸업: 틀린 뒤 연속 2회 정답이면 오답노트에서 제외
+    const streak = (word.wrongStreak || 0) + 1;
+    const patch = {
       correctCount: increment(1),
       reviewStage: stage,
       memorized: stage >= 2,
-      nextReview: todayStr(next)
-    });
+      nextReview: todayStr(next),
+      wrongStreak: streak
+    };
+    // 현재 오답노트에 있는 단어(기존 데이터 포함)가 연속 2회 정답이면 졸업
+    if (streak >= 2 && isInWrongNote(word)) patch.inWrongNote = false;
+    await updateDoc(ref, patch);
   } else {
+    // 틀리거나 스킵 → 오답노트 편입, 연속정답 카운터 리셋
     await updateDoc(ref, {
       wrongCount: increment(1),
       reviewStage: 0,
       memorized: false,
-      nextReview: todayStr()
+      nextReview: todayStr(),
+      wrongStreak: 0,
+      inWrongNote: true
     });
   }
 }
+
+/** 오답노트에서 수동 제거 */
+export async function removeFromWrongNote(uid, id) {
+  await updateDoc(doc(db, 'users', uid, 'words', id), { inWrongNote: false, wrongStreak: 2 });
+}
+
+/** 오답노트 포함 여부 판정 (기존 데이터 호환: inWrongNote 없으면 wrongCount로 추정) */
+export const isInWrongNote = (w) =>
+  w.inWrongNote !== undefined ? w.inWrongNote : (w.wrongCount || 0) > 0;
 
 /** 오늘 복습 대상 단어 */
 export const dueWords = (words) => {

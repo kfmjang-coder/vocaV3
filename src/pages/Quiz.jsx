@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getAllWords, groupByBook, todayStr, dueWords } from '../services/words';
+import { getAllWords, groupByBook, todayStr, dueWords, isInWrongNote } from '../services/words';
 import { Page, EmptyState } from '../components/ui';
 import { haptic } from '../hooks/useSpeech';
 
@@ -39,7 +39,7 @@ export default function Quiz() {
   const t = todayStr();
   const basePools = {
     today: all.filter((w) => w.date === t),
-    wrong: all.filter((w) => (w.wrongCount || 0) > 0),
+    wrong: all.filter(isInWrongNote),
     due: dueWords(all),
     all
   };
@@ -90,7 +90,15 @@ export default function Quiz() {
       <h1>퀴즈 🎯</h1>
       <p className="sub">한 번에 10단어씩, 짧고 굵게!</p>
 
-      <h2>범위</h2>
+      <div className="between" style={{ marginBottom: 8 }}>
+        <h2 style={{ margin: 0 }}>범위</h2>
+        {basePools.wrong.length > 0 && (
+          <button onClick={() => { haptic(10); nav('/wrong-note'); }}
+            style={{ background: 'none', border: 'none', color: 'var(--blue)', fontWeight: 800, fontSize: 13, cursor: 'pointer', padding: 0 }}>
+            오답노트 관리 →
+          </button>
+        )}
+      </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
         {RANGES.map(rangeBtn)}
       </div>
