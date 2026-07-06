@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { compressImage } from '../utils/image';
 import { extractWords } from '../services/gemini';
@@ -15,6 +15,7 @@ export default function Home() {
   const galleryRef = useRef(null);   // 앨범에서 불러오기
   const [analyzing, setAnalyzing] = useState(false);
   const [progress, setProgress] = useState(null); // { cur, total } 다중 분석 진행률
+  const [pendingFiles, setPendingFiles] = useState(null); // 모드 선택 대기 중인 파일들
   const [error, setError] = useState('');
   const [stats, setStats] = useState(null);
 
@@ -32,13 +33,20 @@ export default function Home() {
     })();
   }, [user]);
 
-  const onPick = async (e) => {
+  const onPick = (e) => {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
     if (!files.length) return;
     setError('');
-
     if (!navigator.onLine) { setError('인터넷 연결이 필요해요. 저장된 단어로 퀴즈는 가능해요!'); return; }
+    // 파일을 받아두고 추출 모드를 먼저 물어본다
+    setPendingFiles(files);
+  };
+
+  const runExtraction = async (mode) => {
+    const files = pendingFiles;
+    setPendingFiles(null);
+    if (!files?.length) return;
 
     setAnalyzing(true);
     try {
@@ -53,24 +61,25 @@ export default function Home() {
           setError(`오늘 사진 분석 ${DAILY_LIMIT}회를 모두 사용했어요.${merged.length ? ' 지금까지 찾은 단어만 저장할게요!' : ' 내일 다시 만나요!'}`);
           break;
         }
-        // 여러 장일 때 진행률 표시
         if (files.length > 1) setProgress({ cur: i + 1, total: files.length });
 
         try {
           const { base64, mimeType } = await compressImage(files[i]);
-          const words = await extractWords(gemini, base64, mimeType);
+          const words = await extractWords(gemini, base64, mimeType, mode);
           for (const w of words) {
             if (!seen.has(w.english)) { seen.add(w.english); merged.push(w); }
           }
         } catch (err) {
-          if (err.message === 'NO_KEY') throw err; // 설정 오류는 즉시 중단
+          if (err.message === 'NO_KEY') throw err;
           failCount++;
         }
       }
 
       setProgress(null);
       if (!merged.length) {
-        setError('단어를 못 찾았어요. 글자가 잘 보이게 다시 찍어주세요! 📷');
+        setError(mode === 'headword'
+          ? '표제어를 못 찾았어요. 단어장 페이지가 맞나요? "전체 모드"로 다시 시도해보세요! 📖'
+          : '단어를 못 찾았어요. 글자가 잘 보이게 다시 찍어주세요! 📷');
       } else {
         haptic(30);
         const note = failCount > 0 ? `${failCount}장은 단어를 못 찾았어요` : '';
@@ -179,6 +188,53 @@ export default function Home() {
       <button className="btn btn-white" style={{ marginTop: 16 }} onClick={() => nav('/import')}>
         🎁 코드로 단어장 받기
       </button>
+
+      {/* 추출 모드 선택 시트 */}
+      <AnimatePresence>
+        {pendingFiles && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setPendingFiles(null)}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 90 }} />
+            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 340, damping: 32 }}
+              style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 91, background: 'var(--bg)', borderRadius: '20px 20px 0 0', padding: '10px 20px calc(24px + var(--safe-b))', maxWidth: 480, margin: '0 auto' }}>
+              <div style={{ width: 40, height: 4, borderRadius: 999, background: 'var(--line)', margin: '6px auto 16px' }} />
+              <h2 style={{ marginBottom: 4 }}>어떻게 단어를 뽑을까요?</h2>
+              <p className="sub" style={{ marginBottom: 16 }}>
+                사진 {pendingFiles.length}장 · 사진 종류에 맞게 골라주세요
+              </p>
+
+              <div className="card card-press" style={{ marginBottom: 10, borderColor: 'var(--green)' }}
+                onClick={() => { haptic(12); runExtraction('headword'); }}>
+                <div className="row" style={{ gap: 10 }}>
+                  <span style={{ fontSize: 28 }}>📖</span>
+                  <div>
+                    <div className="row" style={{ gap: 6 }}>
+                      <strong>단어장 모드</strong>
+                      <span className="chip" style={{ background: 'var(--green-light)', color: 'var(--green-dark)' }}>추천</span>
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--gray)', marginTop: 2 }}>표제어만 쏙! 예문·제목 속 단어는 제외해요</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card card-press" style={{ marginBottom: 6 }}
+                onClick={() => { haptic(12); runExtraction('all'); }}>
+                <div className="row" style={{ gap: 10 }}>
+                  <span style={{ fontSize: 28 }}>📄</span>
+                  <div>
+                    <strong>전체 모드</strong>
+                    <div style={{ fontSize: 13, color: 'var(--gray)', marginTop: 2 }}>사진 속 모든 영어 단어를 다 가져와요 (지문·필기용)</div>
+                  </div>
+                </div>
+              </div>
+
+              <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={() => setPendingFiles(null)}>취소</button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </Page>
   );
 }

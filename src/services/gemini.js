@@ -23,15 +23,28 @@ function parseJson(text) {
   try { return JSON.parse(cleaned); } catch { return null; }
 }
 
-/** 이미지에서 영어 단어 전부 추출 + 한글 뜻 생성 (F1) */
-export async function extractWords(gemini, base64, mimeType) {
+/** 이미지에서 영어 단어 추출 + 뜻/발음/품사/예문 생성 (F1)
+ *  mode: 'headword' = 단어장 표제어만 / 'all' = 모든 영어 단어 */
+export async function extractWords(gemini, base64, mimeType, mode = 'all') {
+  const scopeLines = mode === 'headword'
+    ? [
+        '이 이미지는 영어 단어장(단어 교재) 페이지야.',
+        '"표제어"(학습 대상으로 크게/굵게 강조되었거나 번호가 매겨진 핵심 단어)만 골라줘.',
+        '예문, 예문 해석, 대화문, 페이지 제목, 챕터명, 부가 설명(voca tip 등)에 들어있는 단어는 절대 포함하지 마.',
+        '예를 들어 표제어 "wash"의 예문 "I washed the dishes"에서 dishes, the 같은 단어는 제외해야 해.',
+        '보통 한 페이지에 5~15개 정도의 표제어가 있어.'
+      ]
+    : [
+        '이 이미지에서 영어 단어를 전부 찾아줘.',
+        '문장이 있으면 핵심 단어 단위로 분리해서 추출해줘.'
+      ];
+
   const prompt = [
-    '이 이미지에서 영어 단어를 전부 찾아줘.',
+    ...scopeLines,
     '각 단어에 대해 중학생 수준의 한국어 뜻을 1~2개 제공해줘 (여러 뜻은 세미콜론으로 구분).',
     '각 단어의 미국식 발음기호(IPA)도 슬래시로 감싸서 제공해줘.',
     '각 단어의 품사를 한글로 제공해줘 (명사/동사/형용사/부사/전치사/접속사/대명사/감탄사 중 하나).',
     '각 단어마다 중학교 2학년 수준의 짧고 쉬운 영어 예문(5~8단어)과 한국어 해석도 만들어줘.',
-    '문장이 있으면 핵심 단어 단위로 분리해서 추출해줘.',
     '중복 단어는 한 번만 포함하고, 영어 단어는 기본형(원형)으로 정리해줘.',
     '반드시 아래 JSON 배열 형식으로만 응답해. 다른 텍스트는 절대 포함하지 마:',
     '[{"english":"apple","korean":"사과","phonetic":"/ˈæpəl/","pos":"명사","example":"I eat an apple every day.","exampleKo":"나는 매일 사과를 먹어요."}]'
