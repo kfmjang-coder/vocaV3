@@ -203,14 +203,27 @@ export async function updateStreak(uid, profile, score, total) {
   } else {
     streak = 1;
   }
+  // 오늘 푼 퀴즈 횟수(날짜 바뀌면 리셋) — 자랑하기(하루 10회) 판정용
+  const todayQuizzes = (profile?.quizDate === t ? (profile?.todayQuizzes || 0) : 0) + 1;
   await updateDoc(doc(db, 'users', uid), {
     streak,
     lastStudyDate: t,
     totalQuizzes: increment(1),
-    totalCorrect: increment(score)
+    totalCorrect: increment(score),
+    quizDate: t,
+    todayQuizzes
   });
   return streak;
 }
+
+/** 프로필(이름·아바타) 저장 — 문서 병합 */
+export async function saveProfile(uid, data) {
+  await setDoc(doc(db, 'users', uid), data, { merge: true });
+}
+
+/** 오늘 푼 퀴즈 횟수 조회 (날짜 지나면 0) */
+export const getTodayQuizzes = (profile) =>
+  profile?.quizDate === todayStr() ? (profile?.todayQuizzes || 0) : 0;
 
 /** 일일 사진 분석 제한 (S6): 하루 30회 */
 export const DAILY_LIMIT = 30;
