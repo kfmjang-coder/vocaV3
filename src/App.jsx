@@ -1,6 +1,7 @@
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { useAuth } from './contexts/AuthContext';
+import { useActivityTracker } from './hooks/useActivityTracker';
 import TabBar from './components/TabBar';
 import Login from './pages/Login';
 import Pending from './pages/Pending';
@@ -21,6 +22,9 @@ const TAB_PATHS = ['/', '/quiz', '/wordbooks', '/profile'];
 export default function App() {
   const { user, allowed, loading } = useAuth();
   const location = useLocation();
+
+  // 로그인 + 승인된 사용자의 포그라운드 체류시간만 하루 단위로 집계 (관리자 대시보드용)
+  useActivityTracker(user && allowed ? user.uid : null);
 
   if (loading) {
     return (
