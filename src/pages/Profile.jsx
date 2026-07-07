@@ -104,6 +104,7 @@ export default function Profile() {
     setBragging(true);
     try {
       const accuracy = stats.quizzes > 0 ? Math.round((stats.correct / (stats.quizzes * 10)) * 100) : 0;
+      const earnedBadges = BADGES.filter((b) => b.check(stats));
       const blob = await buildAchievementCard({
         name: stats.name,
         avatarEmoji: stats.avatarEmoji,
@@ -111,7 +112,10 @@ export default function Profile() {
         todayQuizzes: stats.todayQuizzes,
         accuracy: Math.min(accuracy, 100),
         streak: stats.streak,
-        memorized: stats.memorized
+        memorized: stats.memorized,
+        badges: earnedBadges.map((b) => b.emoji),
+        badgeEarned: earnedBadges.length,
+        badgeTotal: BADGES.length
       });
       const file = new File([blob], 'siwoojiwoo-achievement.png', { type: 'image/png' });
       const url = location.origin;

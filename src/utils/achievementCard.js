@@ -59,27 +59,27 @@ export async function buildAchievementCard(data) {
   ctx.restore();
 
   // 아바타 원
-  const avY = cardY + 170;
+  const avY = cardY + 150;
   const avColor = data.avatarColor || C.green;
-  ctx.beginPath(); ctx.arc(W / 2, avY, 110, 0, Math.PI * 2);
+  ctx.beginPath(); ctx.arc(W / 2, avY, 100, 0, Math.PI * 2);
   ctx.fillStyle = avColor + '22'; ctx.fill();
   ctx.lineWidth = 8; ctx.strokeStyle = avColor; ctx.stroke();
-  ctx.font = '120px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '110px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(data.avatarEmoji || '🦉', W / 2, avY + 8);
   ctx.textBaseline = 'alphabetic';
 
   // 이름
   ctx.fillStyle = C.ink;
-  ctx.font = '800 60px Pretendard, sans-serif';
-  ctx.fillText(data.name || '학습자', W / 2, avY + 210);
+  ctx.font = '800 56px Pretendard, sans-serif';
+  ctx.fillText(data.name || '학습자', W / 2, avY + 185);
 
   // 큰 숫자: 오늘 퀴즈 횟수
   ctx.fillStyle = C.green;
-  ctx.font = '900 200px Pretendard, sans-serif';
-  ctx.fillText(String(data.todayQuizzes), W / 2, avY + 470);
+  ctx.font = '900 170px Pretendard, sans-serif';
+  ctx.fillText(String(data.todayQuizzes), W / 2, avY + 380);
   ctx.fillStyle = C.gray;
-  ctx.font = '700 48px Pretendard, sans-serif';
-  ctx.fillText('오늘 푼 퀴즈', W / 2, avY + 550);
+  ctx.font = '700 44px Pretendard, sans-serif';
+  ctx.fillText('오늘 푼 퀴즈', W / 2, avY + 445);
 
   // 하단 스탯 3개 (정답률 · 스트릭 · 외운단어)
   const stats = [
@@ -87,7 +87,7 @@ export async function buildAchievementCard(data) {
     { n: `${data.streak}일`, l: '연속학습' },
     { n: `${data.memorized}`, l: '외운단어' }
   ];
-  const sy = cardY + cardH - 140;
+  const sy = cardY + cardH - 320;
   const sw = cardW / 3;
   stats.forEach((s, i) => {
     const sx = cardX + sw * i + sw / 2;
@@ -105,6 +105,28 @@ export async function buildAchievementCard(data) {
       ctx.stroke();
     }
   });
+
+  // 획득 배지 줄 (있을 때만)
+  const badges = data.badges || [];
+  if (badges.length > 0) {
+    const by = sy + 150;
+    // 구분선
+    ctx.strokeStyle = C.line; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cardX + 60, by - 60); ctx.lineTo(cardX + cardW - 60, by - 60); ctx.stroke();
+
+    ctx.fillStyle = C.gray;
+    ctx.font = '700 36px Pretendard, sans-serif';
+    ctx.fillText(`🏅 획득한 배지 ${data.badgeEarned}/${data.badgeTotal}`, W / 2, by);
+
+    // 배지 이모지를 가운데 정렬로 한 줄 (최대 8개)
+    const show = badges.slice(0, 8);
+    ctx.font = '64px sans-serif';
+    const gap = 88;
+    const startX = W / 2 - ((show.length - 1) * gap) / 2;
+    show.forEach((emoji, i) => {
+      ctx.fillText(emoji, startX + i * gap, by + 100);
+    });
+  }
 
   // 하단 앱 이름/링크
   ctx.fillStyle = 'rgba(255,255,255,0.95)';
